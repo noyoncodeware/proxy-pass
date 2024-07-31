@@ -3,7 +3,6 @@ const morgan = require("morgan");
 const axios = require("axios");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const app = express();
-const { extension } = require("mime-types");
 const PORT = process.env.PORT || 4000;
 const API_SERVICE_URL = "https://graph.facebook.com";
 
@@ -33,13 +32,6 @@ const customProxyMiddleware = async (request, response) => {
         "User-Agent": getRandomUserAgent(),
       },
     });
-    let contentType = arrayBuffer.headers["content-type"];
-    const ext = extension(arrayBuffer.headers["content-type"]);
-    if (ext === "bin") {
-      contentType = "application/octet-stream";
-    }
-    response.setHeader("content-type", contentType);
-    response.setHeader("Cache-Control", "public, max-age=86400"); // 24 hours * 60 minutes * 60 seconds = 86400
     arrayBuffer.data.pipe(response);
   } catch {
     response.sendStatus(404);
