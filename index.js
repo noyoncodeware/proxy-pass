@@ -38,8 +38,6 @@ const customProxyMiddleware = (req, res, next) => {
     // port: parsedUrl.port || (parsedUrl.protocol === "https:" ? 443 : 80),
     path: targetUrl + req.url.replace("/common", ""),
     method: req.method,
-    headers: req.headers,
-    rejectUnauthorized: false,
   };
   console.log({ options });
   const proxyReq = protocol.request(options, (proxyRes) => {
