@@ -17,29 +17,16 @@ function getRandomUserAgent() {
   const randomIndex = Math.floor(Math.random() * fakeUserAgents.length);
   return fakeUserAgents[randomIndex];
 }
-const bufferProxyMiddleware = createProxyMiddleware({
-  changeOrigin: true,
-  router: (req) => req.query.__host__,
-  selfHandleResponse: true,
-  on: {
-    proxyRes: (proxyRes, req, res) => {
-      res.writeHead(proxyRes.statusCode, proxyRes.headers);
-      proxyRes.pipe(res);
-    },
-  },
-});
 
-app.use("/buffer", bufferProxyMiddleware);
-
-const customProxyMiddleware = async (req, res, next) => {
+const customProxyMiddleware = async (request, response) => {
   try {
-    const host = req.query.__host__;
+    const host = request.query.__host__;
     if (!host) {
-      return res
+      return response
         .status(400)
         .json({ error: "__host__ query parameter is required" });
     }
-    const targetUrl = host + req.url.replace("/common", "");
+    const targetUrl = host + request.url.replaceAll("/buffer", "");
     const arrayBuffer = await axios.get(targetUrl, {
       responseType: "stream",
       headers: {
@@ -51,15 +38,23 @@ const customProxyMiddleware = async (req, res, next) => {
     if (ext === "bin") {
       contentType = "application/octet-stream";
     }
-    res.setHeader("content-type", contentType);
-    res.setHeader("Cache-Control", "public, max-age=86400"); // 24 hours * 60 minutes * 60 seconds = 86400
-    arrayBuffer.data.pipe(res);
+    response.setHeader("content-type", contentType);
+    response.setHeader("Cache-Control", "public, max-age=86400"); // 24 hours * 60 minutes * 60 seconds = 86400
+    arrayBuffer.data.pipe(response);
   } catch {
-    res.sendStatus(404);
+    response.sendStatus(404);
   }
 };
 
-app.use("/common", customProxyMiddleware);
+app.use("/buffer", customProxyMiddleware);
+
+app.use(
+  "/common",
+  createProxyMiddleware({
+    changeOrigin: true,
+    router: (req) => req.query.__host__,
+  })
+);
 
 app.use(
   "/api",
