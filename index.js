@@ -35,7 +35,7 @@ const customProxyMiddleware = (req, res, next) => {
   const protocol = parsedUrl.protocol === "https:" ? https : http;
   const options = {
     hostname: parsedUrl.hostname,
-    //port: parsedUrl.port || (parsedUrl.protocol === "https:" ? 443 : 80),
+    port: parsedUrl.port || (parsedUrl.protocol === "https:" ? 443 : 80),
     path: targetUrl + req.url.replace("/common", ""),
     method: req.method,
     headers: req.headers,
