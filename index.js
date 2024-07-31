@@ -10,6 +10,14 @@ const API_SERVICE_URL = "https://graph.facebook.com";
 
 app.use(morgan("dev"));
 
+function getRandomUserAgent() {
+  const fakeUserAgents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/91.0.864.59 Safari/537.36",
+  ];
+  const randomIndex = Math.floor(Math.random() * fakeUserAgents.length);
+  return fakeUserAgents[randomIndex];
+}
 const bufferProxyMiddleware = createProxyMiddleware({
   changeOrigin: true,
   router: (req) => req.query.__host__,
@@ -35,9 +43,12 @@ const customProxyMiddleware = (req, res, next) => {
   const protocol = parsedUrl.protocol === "https:" ? https : http;
   const options = {
     hostname: parsedUrl.hostname,
-    // port: parsedUrl.port || (parsedUrl.protocol === "https:" ? 443 : 80),
     path: targetUrl + req.url.replace("/common", ""),
     method: req.method,
+    // headers: req.headers,
+    headers: {
+      "User-Agent": getRandomUserAgent(),
+    },
   };
   console.log({ options });
   const proxyReq = protocol.request(options, (proxyRes) => {
