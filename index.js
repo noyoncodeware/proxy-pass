@@ -30,6 +30,7 @@ const customProxyMiddleware = async (request, response) => {
       responseType: "stream",
       headers: {
         "User-Agent": getRandomUserAgent(),
+        Referer: "https://www.facebook.com/",
       },
     });
     arrayBuffer.data.pipe(response);
