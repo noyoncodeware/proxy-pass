@@ -1,10 +1,9 @@
 const express = require("express");
 const morgan = require("morgan");
+const axios = require("axios");
 const { createProxyMiddleware } = require("http-proxy-middleware");
-const http = require("http");
-const https = require("https");
 const app = express();
-
+const { extension } = require("mime-types");
 const PORT = process.env.PORT || 4000;
 const API_SERVICE_URL = "https://graph.facebook.com";
 
@@ -32,40 +31,32 @@ const bufferProxyMiddleware = createProxyMiddleware({
 
 app.use("/buffer", bufferProxyMiddleware);
 
-const customProxyMiddleware = (req, res, next) => {
-  const targetUrl = req.query.__host__;
-  if (!targetUrl) {
-    return res
-      .status(400)
-      .json({ error: "__host__ query parameter is required" });
-  }
-  const parsedUrl = new URL(targetUrl);
-  const protocol = parsedUrl.protocol === "https:" ? https : http;
-  const options = {
-    hostname: parsedUrl.hostname,
-    path: targetUrl + req.url.replace("/common", ""),
-    method: req.method,
-    // headers: req.headers,
-    headers: {
-      "User-Agent": getRandomUserAgent(),
-    },
-  };
-  console.log({ options });
-  const proxyReq = protocol.request(options, (proxyRes) => {
-    res.writeHead(proxyRes.statusCode, proxyRes.headers);
-    proxyRes.pipe(res, {
-      end: true,
+const customProxyMiddleware = async (req, res, next) => {
+  try {
+    const host = req.query.__host__;
+    if (!host) {
+      return res
+        .status(400)
+        .json({ error: "__host__ query parameter is required" });
+    }
+    const targetUrl = host + req.url.replace("/common", "");
+    const arrayBuffer = await axios.get(targetUrl, {
+      responseType: "stream",
+      headers: {
+        "User-Agent": getRandomUserAgent(),
+      },
     });
-  });
-
-  proxyReq.on("error", (err) => {
-    console.log({ err });
-    res.status(500).json({ error: "Proxy Error", details: err.message });
-  });
-
-  req.pipe(proxyReq, {
-    end: true,
-  });
+    let contentType = arrayBuffer.headers["content-type"];
+    const ext = extension(arrayBuffer.headers["content-type"]);
+    if (ext === "bin") {
+      contentType = "application/octet-stream";
+    }
+    res.setHeader("content-type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=86400"); // 24 hours * 60 minutes * 60 seconds = 86400
+    arrayBuffer.data.pipe(res);
+  } catch {
+    res.sendStatus(404);
+  }
 };
 
 app.use("/common", customProxyMiddleware);
